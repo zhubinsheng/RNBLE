@@ -15,12 +15,12 @@ const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
 export default class BleModule{
     constructor(){
 	    this.isConnecting = false;  //蓝牙是否连接
-        this.bluetoothState = 'off';   //蓝牙打开状态	  
+        this.bluetoothState = 'off';   //蓝牙打开状态
         this.initUUID();
     }
 
-    /** 
-     * 添加监听器 
+    /**
+     * 添加监听器
      * 所有监听事件如下
      * BleManagerStopScan：扫描结束监听
      * BleManagerDiscoverPeripheral：扫描到一个新设备
@@ -33,31 +33,31 @@ export default class BleModule{
         return bleManagerEmitter.addListener(str,fun);
     }
 
-    /** 
-     * 初始化蓝牙模块 
-     * Init the module. 
+    /**
+     * 初始化蓝牙模块
+     * Init the module.
      * */
     start(){
         BleManager.start({showAlert: false})
             .then( ()=>{
                 this.checkState();
-                console.log('Init the module success.');                
+                console.log('Init the module success.');
             }).catch(error=>{
                 console.log('Init the module fail.');
             });
     }
 
-    /** 
-     * 强制检查蓝牙状态 
-     * Force the module to check the state of BLE and trigger a BleManagerDidUpdateState event. 
+    /**
+     * 强制检查蓝牙状态
+     * Force the module to check the state of BLE and trigger a BleManagerDidUpdateState event.
      * */
     checkState(){
         BleManager.checkState();
     }
 
-    /** 
-     * 扫描可用设备，5秒后结束 
-     * Scan for availables peripherals. 
+    /**
+     * 扫描可用设备，5秒后结束
+     * Scan for availables peripherals.
      * */
     scan() {
         return new Promise( (resolve, reject) =>{
@@ -72,9 +72,9 @@ export default class BleModule{
         });
     }
 
-    /** 
-     * 停止扫描 
-     * Stop the scanning. 
+    /**
+     * 停止扫描
+     * Stop the scanning.
      * */
     stopScan() {
         BleManager.stopScan()
@@ -85,9 +85,9 @@ export default class BleModule{
 	        });
     }
 
-    /** 
-     * 返回扫描到的蓝牙设备 
-     * Return the discovered peripherals after a scan. 
+    /**
+     * 返回扫描到的蓝牙设备
+     * Return the discovered peripherals after a scan.
      * */
     getDiscoveredPeripherals() {
         return new Promise( (resolve, reject) =>{
@@ -100,49 +100,49 @@ export default class BleModule{
 
                 });
         });
-    }   
+    }
 
     /**
      * Converts UUID to full 128bit.
-     * 
+     *
      * @param {UUID} uuid 16bit, 32bit or 128bit UUID.
      * @returns {UUID} 128bit UUID.
      */
     fullUUID(uuid) {
         if (uuid.length === 4){
             return '0000' + uuid.toUpperCase() + '-0000-1000-8000-00805F9B34FB'
-        }             
+        }
         if (uuid.length === 8) {
             return uuid.toUpperCase() + '-0000-1000-8000-00805F9B34FB'
-        }            
+        }
         return uuid.toUpperCase()
-    }  
+    }
 
     initUUID(){
         this.readServiceUUID = [];
-        this.readCharacteristicUUID = [];   
+        this.readCharacteristicUUID = [];
         this.writeWithResponseServiceUUID = [];
         this.writeWithResponseCharacteristicUUID = [];
         this.writeWithoutResponseServiceUUID = [];
         this.writeWithoutResponseCharacteristicUUID = [];
         this.nofityServiceUUID = [];
-        this.nofityCharacteristicUUID = [];  
+        this.nofityCharacteristicUUID = [];
     }
 
     //获取Notify、Read、Write、WriteWithoutResponse的serviceUUID和characteristicUUID
-    getUUID(peripheralInfo){       
+    getUUID(peripheralInfo){
         this.readServiceUUID = [];
-        this.readCharacteristicUUID = [];   
+        this.readCharacteristicUUID = [];
         this.writeWithResponseServiceUUID = [];
         this.writeWithResponseCharacteristicUUID = [];
         this.writeWithoutResponseServiceUUID = [];
         this.writeWithoutResponseCharacteristicUUID = [];
         this.nofityServiceUUID = [];
-        this.nofityCharacteristicUUID = [];  
-        for(let item of peripheralInfo.characteristics){      
+        this.nofityCharacteristicUUID = [];
+        for(let item of peripheralInfo.characteristics){
             item.service = this.fullUUID(item.service);
             item.characteristic = this.fullUUID(item.characteristic);
-            if(Platform.OS == 'android'){  
+            if(Platform.OS == 'android'){
                 if(item.properties.Notify == 'Notify'){
                     this.nofityServiceUUID.push(item.service);
                     this.nofityCharacteristicUUID.push(item.characteristic);
@@ -158,7 +158,7 @@ export default class BleModule{
                 if(item.properties.WriteWithoutResponse == 'WriteWithoutResponse'){
                     this.writeWithoutResponseServiceUUID.push(item.service);
                     this.writeWithoutResponseCharacteristicUUID.push(item.characteristic);
-                }                    
+                }
             }else{  //ios
                 for(let property of item.properties){
                     if(property == 'Notify'){
@@ -176,7 +176,7 @@ export default class BleModule{
                     if(property == 'WriteWithoutResponse'){
                         this.writeWithoutResponseServiceUUID.push(item.service);
                         this.writeWithoutResponseCharacteristicUUID.push(item.characteristic);
-                    }                        
+                    }
                 }
             }
         }
@@ -187,12 +187,12 @@ export default class BleModule{
         console.log('writeWithoutResponseServiceUUID',this.writeWithoutResponseServiceUUID);
         console.log('writeWithoutResponseCharacteristicUUID',this.writeWithoutResponseCharacteristicUUID);
         console.log('nofityServiceUUID',this.nofityServiceUUID);
-        console.log('nofityCharacteristicUUID',this.nofityCharacteristicUUID);  
+        console.log('nofityCharacteristicUUID',this.nofityCharacteristicUUID);
     }
 
-    /** 
-     * 连接蓝牙  
-     * Attempts to connect to a peripheral. 
+    /**
+     * 连接蓝牙
+     * Attempts to connect to a peripheral.
      * */
     connect(id) {
         this.isConnecting = true;  //当前蓝牙正在连接中
@@ -200,37 +200,26 @@ export default class BleModule{
             BleManager.connect(id)
                 .then(() => {
                     console.log('Connected success.');
-
-                    BleManager.requestMTU(id, 100)
-                        .then((mtu) => {
-                            // Success code
-                            console.log('MTU size changed to ' + mtu + ' bytes');
-                        })
-                        .catch((error) => {
-                            // Failure code
-                            console.log('MTU size changed eorror:'+error);
-                        });
-
-                    return BleManager.retrieveServices(id);                    
+                    return BleManager.retrieveServices(id);
                 })
                 .then((peripheralInfo)=>{
-                    console.log('Connected peripheralInfo: ', peripheralInfo);                    
+                    console.log('Connected peripheralInfo: ', peripheralInfo);
                     this.peripheralId = peripheralInfo.id;
-                    this.getUUID(peripheralInfo);  
-                    this.isConnecting = false;   //当前蓝牙连接结束  
+                    this.getUUID(peripheralInfo);
+                    this.isConnecting = false;   //当前蓝牙连接结束
                     resolve(peripheralInfo);
                 })
                 .catch(error=>{
                     console.log('Connected error:',error);
-                    this.isConnecting = false;   //当前蓝牙连接结束  
+                    this.isConnecting = false;   //当前蓝牙连接结束
                     reject(error);
                 });
         });
     }
 
-    /** 
-     * 断开蓝牙连接 
-     * Disconnect from a peripheral.  
+    /**
+     * 断开蓝牙连接
+     * Disconnect from a peripheral.
      * */
     disconnect() {
 	    BleManager.disconnect(this.peripheralId)
@@ -239,12 +228,12 @@ export default class BleModule{
 		    })
 		    .catch( (error) => {
 			    console.log('Disconnected error:',error);
-		    });      
+		    });
     }
 
-    /** 
-     * 打开通知  
-     * Start the notification on the specified characteristic.  
+    /**
+     * 打开通知
+     * Start the notification on the specified characteristic.
      * */
     startNotification(index = 0) {
         return new Promise( (resolve, reject) =>{
@@ -260,11 +249,11 @@ export default class BleModule{
         });
     }
 
-    /** 
-     * 关闭通知  
-     * Stop the notification on the specified characteristic. 
+    /**
+     * 关闭通知
+     * Stop the notification on the specified characteristic.
      * */
-    stopNotification(index = 0) { 
+    stopNotification(index = 0) {
         BleManager.stopNotification(this.peripheralId, this.nofityServiceUUID[index], this.nofityCharacteristicUUID[index])
             .then(() => {
                 console.log('stopNotification success!');
@@ -276,15 +265,15 @@ export default class BleModule{
             });
     }
 
-	/** 
+	/**
      * 写数据到蓝牙
      * 参数：(peripheralId, serviceUUID, characteristicUUID, data, maxByteSize)
-     * Write with response to the specified characteristic, you need to call retrieveServices method before. 
+     * Write with response to the specified characteristic, you need to call retrieveServices method before.
      * */
 	write(data,index = 0) {
         // data = this.addProtocol(data);   //在数据的头尾加入协议格式，如0A => FEFD010AFCFB，不同的蓝牙协议应作相应的更改
         return new Promise( (resolve, reject) =>{
-            BleManager.write(this.peripheralId, this.writeWithResponseServiceUUID[index], this.writeWithResponseCharacteristicUUID[index], data)
+            BleManager.write(this.peripheralId, this.writeWithResponseServiceUUID[index], this.writeWithResponseCharacteristicUUID[index], data, 100)
                 .then(() => {
                     console.log('Write success: ',data.toString());
                     resolve();
@@ -293,13 +282,13 @@ export default class BleModule{
                     console.log('Write  failed: ',data);
                     reject(error);
                 });
-        });       
+        });
     }
 
-    /** 
-     * 写数据到蓝牙，没有响应 
+    /**
+     * 写数据到蓝牙，没有响应
      * 参数：(peripheralId, serviceUUID, characteristicUUID, data, maxByteSize)
-     * Write without response to the specified characteristic, you need to call retrieveServices method before.  
+     * Write without response to the specified characteristic, you need to call retrieveServices method before.
      * */
     writeWithoutResponse(data,index = 0){
         return new Promise( (resolve, reject) =>{
@@ -312,11 +301,11 @@ export default class BleModule{
                     console.log('Write  failed: ',data);
                     reject(error);
                 });
-        });		
+        });
     }
-    
-    /** 
-     * 读取数据  
+
+    /**
+     * 读取数据
      * Read the current value of the specified characteristic, you need to call retrieveServices method before
      * */
     read(index = 0){
@@ -324,7 +313,7 @@ export default class BleModule{
             BleManager.read(this.peripheralId, this.readServiceUUID[index], this.readCharacteristicUUID[index])
                 .then((data) => {
                     const str = this.byteToString(data);
-                    console.log('Read: ', data, str);                    
+                    console.log('Read: ', data, str);
                     resolve(str);
                 })
                 .catch((error) => {
@@ -334,9 +323,9 @@ export default class BleModule{
         });
     }
 
-    /** 
-     * 返回已连接的蓝牙设备 
-     * Return the connected peripherals. 
+    /**
+     * 返回已连接的蓝牙设备
+     * Return the connected peripherals.
      * */
     getConnectedPeripherals() {
         BleManager.getConnectedPeripherals([])
@@ -347,8 +336,8 @@ export default class BleModule{
             })
     }
 
-     /** 
-      * 判断指定设备是否已连接 
+     /**
+      * 判断指定设备是否已连接
       * Check whether a specific peripheral is connected and return true or false
       */
      isPeripheralConnected(){
@@ -356,7 +345,7 @@ export default class BleModule{
             BleManager.isPeripheralConnected(this.peripheralId, [])
                 .then((isConnected) => {
                     resolve(isConnected);
-                    if (isConnected) {                        
+                    if (isConnected) {
                         console.log('Peripheral is connected!');
                     } else {
                         console.log('Peripheral is NOT connected!');
@@ -367,9 +356,9 @@ export default class BleModule{
         });
     }
 
-    /** 
-     * 蓝牙接收的信号强度 
-     * Read the current value of the RSSI 
+    /**
+     * 蓝牙接收的信号强度
+     * Read the current value of the RSSI
      * */
 	readRSSI(id) {
         return new Promise( (resolve, reject) =>{
@@ -385,9 +374,9 @@ export default class BleModule{
         });
     }
 
-    /** 
-     * 打开蓝牙(Android only) 
-     * Create the request to the user to activate the bluetooth 
+    /**
+     * 打开蓝牙(Android only)
+     * Create the request to the user to activate the bluetooth
      * */
 	enableBluetooth() {
 	    BleManager.enableBluetooth()
@@ -399,9 +388,9 @@ export default class BleModule{
 		    });
     }
 
-    /** 
-     * Android only 
-     * 开启一个绑定远程设备的进程  
+    /**
+     * Android only
+     * 开启一个绑定远程设备的进程
      * Start the bonding (pairing) process with the remote device
      * */
     createBond(){
@@ -414,9 +403,9 @@ export default class BleModule{
             })
     }
 
-    /** 
-     * Android only 
-     * 获取已绑定的设备  
+    /**
+     * Android only
+     * 获取已绑定的设备
      * Return the bonded peripherals
      * */
     getBondedPeripherals(){
@@ -427,10 +416,10 @@ export default class BleModule{
             });
     }
 
-     /**  
+     /**
       * 在已绑定的缓存列表中移除设备
-      * Removes a disconnected peripheral from the cached list. 
-      * It is useful if the device is turned off,       
+      * Removes a disconnected peripheral from the cached list.
+      * It is useful if the device is turned off,
       * because it will be re-discovered upon turning on again
       * */
     removePeripheral(){
@@ -441,20 +430,20 @@ export default class BleModule{
                 })
                 .catch(error=>{
                     reject(error);
-                })      
-        });  
+                })
+        });
     }
 
-    /** 
-     * 添加蓝牙协议格式，包头、数据长度、包尾，不同的蓝牙协议应作相应的更改  
+    /**
+     * 添加蓝牙协议格式，包头、数据长度、包尾，不同的蓝牙协议应作相应的更改
      * 0A => FEFD010AFCFB
      * */
     addProtocol(data){
         return 'FEFD' + this.getHexByteLength(data) + data + 'FCFB';
     }
 
-	/** 
-     * 计算十六进制数据长度，每两位为1个长度，返回十六进制长度 
+	/**
+     * 计算十六进制数据长度，每两位为1个长度，返回十六进制长度
      * */
 	getHexByteLength(str){
 		let length = parseInt(str.length / 2);
@@ -462,7 +451,7 @@ export default class BleModule{
 		return hexLength;
 	}
 
-    /** 
+    /**
      * 在字符串前面添加 0, 默认补充为2位
      * */
     addZero(str, bit=2){
@@ -472,13 +461,13 @@ export default class BleModule{
         return str;
     }
 
-     /** 
-      * ios系统从蓝牙广播信息中获取蓝牙MAC地址 
+     /**
+      * ios系统从蓝牙广播信息中获取蓝牙MAC地址
       * */
     getMacAddressFromIOS(data){
         let macAddressInAdvertising = data.advertising.kCBAdvDataManufacturerMacAddress;
         //为undefined代表此蓝牙广播信息里不包括Mac地址
-        if(!macAddressInAdvertising){  
+        if(!macAddressInAdvertising){
             return;
         }
         macAddressInAdvertising = macAddressInAdvertising.replace("<","").replace(">","").replace(" ","");
@@ -504,59 +493,59 @@ export default class BleModule{
 		}
 	    return format.toUpperCase();
     }
-    
+
     /**
      * 字符串转换成byte数组
      */
-    stringToByte(str) {  
-        var bytes = new Array();  
-        var len, c;  
-        len = str.length;  
-        for(var i = 0; i < len; i++) {  
-            c = str.charCodeAt(i);  
-            if(c >= 0x010000 && c <= 0x10FFFF) {  
-                bytes.push(((c >> 18) & 0x07) | 0xF0);  
-                bytes.push(((c >> 12) & 0x3F) | 0x80);  
-                bytes.push(((c >> 6) & 0x3F) | 0x80);  
-                bytes.push((c & 0x3F) | 0x80);  
-            } else if(c >= 0x000800 && c <= 0x00FFFF) {  
-                bytes.push(((c >> 12) & 0x0F) | 0xE0);  
-                bytes.push(((c >> 6) & 0x3F) | 0x80);  
-                bytes.push((c & 0x3F) | 0x80);  
-            } else if(c >= 0x000080 && c <= 0x0007FF) {  
-                bytes.push(((c >> 6) & 0x1F) | 0xC0);  
-                bytes.push((c & 0x3F) | 0x80);  
-            } else {  
-                bytes.push(c & 0xFF);  
-            }  
-        }  
-        return bytes;      
-    }      
+    stringToByte(str) {
+        var bytes = new Array();
+        var len, c;
+        len = str.length;
+        for(var i = 0; i < len; i++) {
+            c = str.charCodeAt(i);
+            if(c >= 0x010000 && c <= 0x10FFFF) {
+                bytes.push(((c >> 18) & 0x07) | 0xF0);
+                bytes.push(((c >> 12) & 0x3F) | 0x80);
+                bytes.push(((c >> 6) & 0x3F) | 0x80);
+                bytes.push((c & 0x3F) | 0x80);
+            } else if(c >= 0x000800 && c <= 0x00FFFF) {
+                bytes.push(((c >> 12) & 0x0F) | 0xE0);
+                bytes.push(((c >> 6) & 0x3F) | 0x80);
+                bytes.push((c & 0x3F) | 0x80);
+            } else if(c >= 0x000080 && c <= 0x0007FF) {
+                bytes.push(((c >> 6) & 0x1F) | 0xC0);
+                bytes.push((c & 0x3F) | 0x80);
+            } else {
+                bytes.push(c & 0xFF);
+            }
+        }
+        return bytes;
+    }
 
     /**
      * byte数组转换成字符串
      */
-    byteToString(arr) {  
-        if(typeof arr === 'string') {  
-            return arr;  
-        }  
-        var str = '',  
-            _arr = arr;  
-        for(var i = 0; i < _arr.length; i++) {  
-            var one = _arr[i].toString(2),  
-                v = one.match(/^1+?(?=0)/);  
-            if(v && one.length == 8) {  
-                var bytesLength = v[0].length;  
-                var store = _arr[i].toString(2).slice(7 - bytesLength);  
-                for(var st = 1; st < bytesLength; st++) {  
-                    store += _arr[st + i].toString(2).slice(2);  
-                }  
-                str += String.fromCharCode(parseInt(store, 2));  
-                i += bytesLength - 1;  
-            } else {  
-                str += String.fromCharCode(_arr[i]);  
-            }  
-        }  
-        return str;  
-    }  
+    byteToString(arr) {
+        if(typeof arr === 'string') {
+            return arr;
+        }
+        var str = '',
+            _arr = arr;
+        for(var i = 0; i < _arr.length; i++) {
+            var one = _arr[i].toString(2),
+                v = one.match(/^1+?(?=0)/);
+            if(v && one.length == 8) {
+                var bytesLength = v[0].length;
+                var store = _arr[i].toString(2).slice(7 - bytesLength);
+                for(var st = 1; st < bytesLength; st++) {
+                    store += _arr[st + i].toString(2).slice(2);
+                }
+                str += String.fromCharCode(parseInt(store, 2));
+                i += bytesLength - 1;
+            } else {
+                str += String.fromCharCode(_arr[i]);
+            }
+        }
+        return str;
+    }
 }
