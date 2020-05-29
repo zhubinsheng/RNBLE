@@ -12,16 +12,24 @@ import {
     SafeAreaView,
     Modal,
     StatusBar,
+    SectionList
 } from 'react-native'
 import BleModule from './BleModule';
 import treaty from'./utils/treaty.js';
 import codec from './utils/codec.js'
 import bleParams from './utils/bleParams.js'
 import BleManager from "react-native-ble-manager";
+import UISelectModal from './selectView'
+import Selectmore from './componentModal/selectMore'
 
-
+// import PopupDialog, { SlideAnimation } from 'react-native-popup-dialog';
 //确保全局只有一个BleManager实例，BleModule类保存着蓝牙的连接信息
 global.BluetoothManager = new BleModule();
+//
+// const slideAnimation = new SlideAnimation({
+//     slideFrom: 'bottom',
+// });
+
 
 export default class App extends Component {
 
@@ -31,11 +39,405 @@ export default class App extends Component {
     // }
     //     // 返回事件
     onPressButton = () => {
-        console.log("3");
         this.getVersion();
+    }
+    sendPassword= () =>{
+        console.log(this.state.password)
+        console.log(this.wifiName)
+        this.send2passwordImpl(null);
+    }
+    send2passwordImpl(bytes){
+        if (bytes==null) {
+
+        }else{
+            console.log("callback will proccoss Uint8Array bytes:" + bytes)
+            let frag_ctrl = bytes[3]<<8|bytes[2];
+            frag_ctrl &= 0x7fff;
+            let ackCode;
+            if (frag_ctrl === 0) {
+                ackCode = bytes[17];
+                let dataLength = bytes[6];
+                if (dataLength<11) {
+                    console.error("数据解析失败，长度不够");
+                    return
+                }
+            } else {
+                ackCode = bytes[7];
+                let dataLength = bytes[6];
+                if (dataLength<1) {
+                    console.error("数据解析失败，长度不够");
+                    return
+                }
+            }
+            if (ackCode===0) {
+
+            } else {
+                console.error("ackCode!=0");
+            }
+            let date2String;
+            if (frag_ctrl===0) {
+                //date2String = bytes.slice(18,bytes[16]+18)
+            } else {
+                //date2String = bytes.slice(8,bytes[6]+8)
+            }
+        }
+        let type
+        switch(this.state.stmp){
+            case 1:
+                type = bleParams.SUBTYPE_STA_WIFI_SSID;
+                this.state.stmp++;
+                this.sen8kDate(this.wifiName,type,this.send2passwordImpl);
+                break;
+            case 2:
+                type = bleParams.SUBTYPE_STA_WIFI_PASSWORD;
+                this.state.stmp++;
+                this.sen8kDate(this.password,type,this.send2passwordImpl);
+                break;
+            case 3:
+                type = bleParams.SUBTYPE_CONNECT_WIFI;
+                this.state.stmp = 0;
+                let data = [];
+                data = codec.utf8.encode("9988");
+                let buffer =  treaty.pottingData(type,this.state.seq,data,data.length,false,false,true,0,true);
+                console.log(buffer);
+                let array = new Uint8Array(buffer);
+                BluetoothManager.write(this.Bytes2Str(array),0)
+                    .then(()=>{
+                        console.log("读取成功1:")
+                        this.seq++
+                        console.log("读取成功2:")
+                        setTimeout(function(){
+                            console.log("读取成功3:")
+                            BluetoothManager.read(4)
+                                .then(data=>{
+                                    console.log(data)
+                                    // that.send2passwordImpl(data)
+                                })
+                                .catch(err=>{
+                                    // that.alert('读取失败');
+                                })
+                        },2)
+
+                    })
+                    .catch(err=>{
+                        // that.alert('发送失败');
+                    })
+                break;
+        }
+    }
+    sliceArr(array, size) {
+        let result = [];
+        for (let x = 0; x < Math.ceil(array.length / size); x++) {
+            let start = x * size;
+            let end = start + size;
+            result.push(array.slice(start, end));
+        }
+        return result;
+    }
+    sen8kDate(e,type,callback) {
+        let that = this;
+        let data = [];
+        data = codec.utf8.encode(e);
+        console.log(data);
+        let everyDateLength = 100 - bleParams.everyDateLength;
+        let firstDateLength = 100 - bleParams.firstDateLength;
+
+        if (data.length>100) {
+            //下面发送第一次数据
+            let buffer =  treaty.pottingData(type,data.slice(0,firstDateLength),data.length,true,true,true,0,false);
+            console.log(buffer);
+            // this.writeToBLE(buffer);
+            data = data.slice(firstDateLength);
+            let result = this.sliceArr(data, size);
+            console.log(result);
+            //上面直接将数据分组 下面循环处理剩下数据和发送
+            for (let i = 0; i < result.length; i++) {
+                if (i===result.length) {
+                    buffer = treaty.pottingData(type,result[i],everyDateLength,true,true,false, i+1,true);
+                }else{
+                    buffer = treaty.pottingData(type,result[i],everyDateLength,true,true,false, i+1,false);
+                }
+                console.log(buffer);
+                let array = new Uint8Array(buffer);
+                BluetoothManager.write(this.Bytes2Str(array),0)
+                    .then(()=>{
+                        console.log("读取成功1:")
+                        this.seq++
+                        console.log("读取成功2:")
+                        setTimeout(function(){
+                            console.log("读取成功3:")
+                            BluetoothManager.read(4)
+                                .then(data=>{
+                                    console.log(data)
+                                    that.send2passwordImpl(data)
+                                })
+                                .catch(err=>{
+                                    that.alert('读取失败');
+                                })
+                        },2)
+
+                    })
+                    .catch(err=>{
+                        that.alert('发送失败');
+                    })
+            }
+        }else{
+            let buffer;
+            if (data.length<firstDateLength) {
+                buffer = treaty.pottingData(type,this.state.seq,data,data.length,false,true,true,0,true);
+            } else {
+                //暂时未处理
+                //buffer = treaty.pottingData(type,this.data.seq,data.slice(0,firstDateLength),firstDateLength,false,true,true,0,true);
+            }
+            console.log(buffer);
+            // this.writeToBLE(buffer,1,callback);
+            let array = new Uint8Array(buffer);
+            BluetoothManager.write(this.Bytes2Str(array),0)
+                .then(()=>{
+                    console.log("读取成功1:")
+                    this.seq++
+                    console.log("读取成功2:")
+                    setTimeout(function(){
+                        console.log("读取成功3:")
+                        BluetoothManager.read(4)
+                            .then(data=>{
+                                console.log(data)
+                                that.send2passwordImpl(data)
+                            })
+                            .catch(err=>{
+                                that.alert('读取失败');
+                            })
+                    },2)
+
+                })
+                .catch(err=>{
+                    that.alert('发送失败');
+                })
+        }
     }
 
 
+    smartConfig = () => {
+        let that = this;
+        let type = bleParams.SUBTYPE_GET_WIFI_LIST;
+        let data = [];
+        data = codec.utf8.encode("1234");
+        let buffer =  treaty.pottingData(type,1,data,data.length,false,false,true,0,true);
+        let array = new Uint8Array(buffer);
+        BluetoothManager.write(this.Bytes2Str(array),0)
+            .then(()=>{
+                console.log("读取成功1:")
+                this.seq++
+                console.log("读取成功2:")
+                setTimeout(function(){
+                    console.log("读取成功3:")
+                    BluetoothManager.read(4)
+                        .then(data=>{
+                            console.log(data)
+                            that.getDate()
+                        })
+                        .catch(err=>{
+                            that.alert('读取失败');
+                        })
+                 },2000)
+
+            })
+            .catch(err=>{
+                this.alert('发送失败');
+            })
+    }
+    getDateResults: '';
+    getDate(){
+        let that = this;
+        console.log("读取成功4:")
+        let type = 11;
+        let data = [];
+        data = codec.utf8.encode("1234");
+        let buffer =  treaty.pottingData(type,this.seq,data,data.length,false,false,true,0,true);
+        console.log("读取成功5:")
+        let array = new Uint8Array(buffer);
+        BluetoothManager.write(this.Bytes2Str(array),0)
+            .then(()=>{
+                console.log("读取成功6:")
+                that.seq++
+                setTimeout(function(){
+                    BluetoothManager.read(4)
+                        .then(data=>{
+                            console.log("读取成功:")
+                            console.log(data)
+                            that.getWifiDate(data)
+                        })
+                        .catch(err=>{
+                            console.log('读取失败');
+                        })
+                },1000)
+
+            })
+            .catch(err=>{
+                console.log('发送失败');
+            })
+    }
+    getWifiDate(bytes){
+        let that = this;
+
+        if (bytes==null) {
+
+        } else {
+            let frag_ctrl = bytes[3]<<8|bytes[2];
+            frag_ctrl &= 0x7fff;
+            let ackCode;
+            if (frag_ctrl === 0) {
+                ackCode = bytes[17];
+                let dataLength = bytes[6];
+                if (dataLength<11) {
+                    console.log("数据解析失败，长度不够");
+                    return
+                }
+            } else {
+                ackCode = bytes[7];
+                let dataLength = bytes[6];
+                if (dataLength<1) {
+                    console.log("数据解析失败，长度不够");
+                    return
+                }
+            }
+            if (ackCode===0) {
+                let date2String;
+                if (frag_ctrl===0) {
+                    date2String = bytes.slice(18,bytes[16]+18)
+                } else {
+                    date2String = bytes.slice(8,bytes[6]+8)
+                }
+                if (date2String.length===0) {
+                    console.log("date2String.length==0");
+                    that.alert('获取wifi列表完成');
+                    return
+                } else {
+                    let dateString = this.Uint8ArrayToString(date2String);
+                    console.log(dateString);
+                    if (that.getDateResults===undefined){
+                        console.log(that.getDateResults)
+                        that.getDateResults="";
+                        console.log(that.getDateResults)
+                    }
+                    console.log(that.getDateResults)
+                    that.getDateResults += dateString;
+
+                    let frag_ctrl_high = ( bytes[3]<<8) | bytes[2];
+                    let code = this.bitGet(frag_ctrl_high,15);
+                    if (code === 1) {
+                        console.log('json解析前')
+                        console.log(typeof that.getDateResults);
+                        console.log(that.getDateResults);
+                        //解析和显示
+                        //this.showRule(this.data.getDateResults);
+                        //let jsonString = this.getDateResults;
+                        //'{"key1": "string1","key2": "string2"}';
+                        let wifiModel = JSON.parse(that.getDateResults);
+                        console.log('json解析ok')
+                        console.log(wifiModel)
+                        console.log(wifiModel.bssid)
+                        //+wifiModel.bssid
+                        this.SelectData.push({name:wifiModel.ssid,id:wifiModel.bssid});
+                        console.log(this.SelectData)
+                        this.setState({
+                            visible: true
+                        });
+
+                        that.getDateResults=""
+                    } else {
+
+                    }
+                }
+                that.getDating = true;
+                let type = 11;
+                let data = [];
+                data = codec.utf8.encode("1234");
+                let buffer =  treaty.pottingData(type,this.seq,data,data.length,false,false,true,0,true);
+                console.log(buffer);
+                let array = new Uint8Array(buffer);
+                BluetoothManager.write(this.Bytes2Str(array),0)
+                    .then(()=>{
+                        this.seq++
+                        setTimeout(function(){
+                            BluetoothManager.read(4)
+                                .then(data=>{
+                                    console.log("读取成功:")
+                                    console.log(data)
+                                    that.getWifiDate(data)
+                                })
+                                .catch(err=>{
+                                    console.log('读取失败');
+                                })
+                        },1)
+
+                    })
+                    .catch(err=>{
+                        console.log('发送失败');
+                    })
+
+            } else {
+                console.log("ackCode!=0");
+                //setTimeout(() => {
+                this.getDating = true;
+                let type = 11;
+                let data = [];
+                data = codec.utf8.encode("1234");
+                let buffer =  treaty.pottingData(type,this.seq,data,data.length,false,false,true,0,true);
+                console.log(buffer);
+                let array = new Uint8Array(buffer);
+                BluetoothManager.write(this.Bytes2Str(array),0)
+                    .then(()=>{
+                        this.seq++
+                        setTimeout(function(){
+                            BluetoothManager.read(4)
+                                .then(data=>{
+                                    console.log("读取成功:")
+                                    console.log(data)
+                                    that.getWifiDate(data)
+                                })
+                                .catch(err=>{
+                                    that.alert('读取失败');
+                                })
+                        },1)
+
+                    })
+                    .catch(err=>{
+                        that.alert('发送失败');
+                    })
+            }
+        }
+    }
+    getVersion(){
+        let type = bleParams.SUBTYPE_GET_VERSION;
+        let data = codec.utf8.encode("1234");
+        let buffer =  treaty.pottingData(type,1,data,data.length,false,false,true,0,true);
+        let array = new Uint8Array(buffer);
+        let str = this.utf8ByteArrayToString(array);//转换字符串
+        BluetoothManager.write(this.Bytes2Str(array),0)
+            .then(()=>{
+                //console.log("6");
+                this.bluetoothReceiveData = [];
+                this.setState({
+                    writeData:buffer.buffer,
+                    text:'',
+                })
+                setTimeout(function(){
+                    BluetoothManager.read(4)
+                        .then(data=>{
+                            console.log("读取成功:")
+                            console.log(data)
+                            //this.getWifiDate()
+                        })
+                        .catch(err=>{
+                            this.alert('读取失败');
+                        })
+                },100)
+            })
+            .catch(err=>{
+                this.alert('发送失败');
+            })
+    };
     arrayBufferToBase64( buffer ) {
         let binary = '';
         let bytes = new Uint8Array( buffer );
@@ -45,7 +447,6 @@ export default class App extends Component {
         }
         return window.btoa( binary );
     }
-
     //字符串转bytes
     stringToUtf8ByteArray(str){
         var out = [], p =0;
@@ -71,8 +472,8 @@ export default class App extends Component {
         }
         return out;
     }
-
     //bytes转换成字符串
+    wifiName: string;
     utf8ByteArrayToString(bytes) {
         var out = [], pos =0, c =0;
         while (pos < bytes.length) {
@@ -97,6 +498,19 @@ export default class App extends Component {
         }
         return out.join('');
     }
+
+    Uint8ArrayToString(fileData){
+        var dataString = "";
+        for (var i = 0; i < fileData.length; i++) {
+            dataString += String.fromCharCode(fileData[i]);
+        }
+        return dataString
+    }
+
+    bitGet( dater, num){
+        return ((dater & (1<<(num))) >> num) == 1 ? 1 : 0
+    }
+
     Bytes2Str(arr) {
         let str = "";
         for(let i=0; i<arr.length; i++)
@@ -111,40 +525,13 @@ export default class App extends Component {
         return str;
     }
 
-    getVersion(){
-        //console.log("1");
-        let type = bleParams.SUBTYPE_GET_VERSION;
-        let data = [];
-        data = codec.utf8.encode("1234");
-        //console.log("2");
-        let buffer =  treaty.pottingData(type,1,data,data.length,false,false,true,0,true);
-        //console.log("4");
-        let array = new Uint8Array(buffer);
-        // for(let i = 0; i < array.length; ++i){
-        //     console.log(array[i])
-        // }
-        //console.log(buffer.toString());
-        //console.log("5");
-        let str = this.utf8ByteArrayToString(array);//转换字符串
-        console.log(this.Bytes2Str(array));
-        //const base64Str = buffer.toString('base64');
-        BluetoothManager.write(this.Bytes2Str(array),0)
-            .then(()=>{
-                //console.log("6");
-                this.bluetoothReceiveData = [];
-                this.setState({
-                    writeData:buffer.buffer,
-                    text:'',
-                })
-            })
-            .catch(err=>{
-                this.alert('发送失败');
-            })
-    };
-
     constructor(props) {
         super(props);
         this.state={
+            stmp: 1,
+            getDating:false,
+            seq: 0,
+            password:null,
             data: [],
             scaning:false,
             isConnected:false,
@@ -152,14 +539,23 @@ export default class App extends Component {
             writeData:'',
             receiveData:'',
             readData:'',
-            isMonitoring:false
+            isMonitoring:false,
         }
         this.bluetoothReceiveData = [];  //蓝牙接收的数据缓存
         this.deviceMap = new Map();
 
+
+    }
+
+    opens(v){//接收子组件传递过来的数据
+        console.log('在这里处理子组件返回的值');
+        console.log(v);
+        console.log(v.name);
+        this.wifiName = "bl_test_055";
     }
 
     componentDidMount(){
+
         BluetoothManager.start();  //蓝牙初始化
         this.updateStateListener = BluetoothManager.addListener('BleManagerDidUpdateState',this.handleUpdateState);
         this.stopScanListener = BluetoothManager.addListener('BleManagerStopScan',this.handleStopScan);
@@ -270,7 +666,7 @@ export default class App extends Component {
                     data:[item.item],
                     isConnected:true
                 });
-                BleManager.requestMTU(item.item.id, 100)
+                BleManager.requestMTU(item.item.id, 80)
                     .then((mtu) => {
                         // Success code
                         console.log('MTU size changed to ' + mtu + ' bytes');
@@ -436,10 +832,10 @@ export default class App extends Component {
             <View style={{marginBottom:30}}>
                 {this.state.isConnected?
                     <View>
-                    {this.renderWriteView('写数据(write)：','发送',BluetoothManager.writeWithResponseCharacteristicUUID,this.write,this.state.writeData)}
-                    {this.renderWriteView('写数据(writeWithoutResponse)：','发送',BluetoothManager.writeWithoutResponseCharacteristicUUID,this.writeWithoutResponse,this.state.writeData)}
-                    {this.renderReceiveView('读取的数据：','读取',BluetoothManager.readCharacteristicUUID,this.read,this.state.readData)}
-                    {this.renderReceiveView('通知监听接收的数据：'+`${this.state.isMonitoring?'监听已开启':'监听未开启'}`,'开启通知',BluetoothManager.nofityCharacteristicUUID,this.notify,this.state.receiveData)}
+                    {/*{this.renderWriteView('写数据(write)：','发送',BluetoothManager.writeWithResponseCharacteristicUUID,this.write,this.state.writeData)}*/}
+                    {/*{this.renderWriteView('写数据(writeWithoutResponse)：','发送',BluetoothManager.writeWithoutResponseCharacteristicUUID,this.writeWithoutResponse,this.state.writeData)}*/}
+                    {/*{this.renderReceiveView('读取的数据：','读取',BluetoothManager.readCharacteristicUUID,this.read,this.state.readData)}*/}
+                    {/*{this.renderReceiveView('通知监听接收的数据：'+`${this.state.isMonitoring?'监听已开启':'监听未开启'}`,'开启通知',BluetoothManager.nofityCharacteristicUUID,this.notify,this.state.receiveData)}*/}
 
                     </View>
                     : <View></View>
@@ -506,6 +902,9 @@ export default class App extends Component {
         )
     }
 
+    SelectData = [
+
+    ]
     render () {
         return (
             <SafeAreaView style={styles.container}>
@@ -513,13 +912,18 @@ export default class App extends Component {
                 <View style={styles.container}>
                     <View style={styles.buttonContainer}>
                         <Button
-                            onPress={this.onPressButton}
-                            title="点我联网"
+                            onPress={this.smartConfig}
+                            title="点我获取wifi列表"
                             color="#841584"
                         />
                         <Button
                             onPress={this.onPressButton}
-                            title="查看状态"
+                            title="查看wifi状态"
+
+                        />
+                        <Button
+                            onPress={this.onPressButton}
+                            title="查看VERSION"
 
                         />
                         <Button
@@ -529,11 +933,7 @@ export default class App extends Component {
                         />
                     </View>
                     {/*<View style={styles.buttonContainer}>*/}
-
                     {/*</View>*/}
-
-
-
                     <FlatList
                         renderItem={this.renderItem}
                         ListHeaderComponent={this.renderHeader}
@@ -542,6 +942,43 @@ export default class App extends Component {
                         data={this.state.data}
                         extraData={[this.state.isConnected,this.state.text,this.state.receiveData,this.state.readData,this.state.writeData,this.state.isMonitoring,this.state.scaning]}
                         keyboardShouldPersistTaps='handled'
+                    />
+
+
+
+                    <Selectmore
+                        opens={this.opens.bind(this)}
+                        SelectData={this.SelectData}
+                        style={{flexWrap:'wrap',padding:6}}
+                        TextColor={{color:'#666',fontSize:13}}/>
+
+                    <TextInput
+                        style={styles.input}
+                        placeholder='请输入密码'
+                        placeholderTextColor={"#CCC"}
+                        returnKeyType='done'
+                        clearButtonMode='while-editing'
+                        enablesReturnKeyAutomatically={true}
+                        editable={true}
+                        maxLength={100}
+                        keyboardType='default'
+                        onFocus={()=> console.log("--获取焦点触发事件--")}
+                        onBlur={()=> console.log("--失去焦点触发事件--")}
+                        onChange={() =>
+                            console.log("---当文本发生改变时，调用该函数--")
+                             }
+                        onEndEditing={() => console.log("--当结束编辑时，调用该函数--")}
+                        onSubmitEditing={ () => console.log("--当结束编辑后，点击键盘的提交按钮时触发事件--")}
+
+                        onChangeText={(text) => {
+                                this.state.password = text
+                               }}
+                    />
+
+                    <Button
+                        onPress={this.sendPassword}
+                        title="发送密码"
+                        color="#841584"
                     />
                 </View>
             </SafeAreaView>
