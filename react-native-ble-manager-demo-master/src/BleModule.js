@@ -140,8 +140,8 @@ export default class BleModule{
         this.nofityServiceUUID = [];
         this.nofityCharacteristicUUID = [];
         for(let item of peripheralInfo.characteristics){
-            item.service = this.fullUUID(item.service);
-            item.characteristic = this.fullUUID(item.characteristic);
+            // item.service = this.fullUUID(item.service);
+            // item.characteristic = this.fullUUID(item.characteristic);
             if(Platform.OS == 'android'){
                 if(item.properties.Notify == 'Notify'){
                     this.nofityServiceUUID.push(item.service);
@@ -309,6 +309,10 @@ export default class BleModule{
      * Read the current value of the specified characteristic, you need to call retrieveServices method before
      * */
     read(index = 0){
+        console.log('readServiceUUID',"this.readServiceUUID[index]:");
+
+        console.log('readServiceUUID',this.readServiceUUID[index]);
+        index = index - 4;
         return new Promise( (resolve, reject) =>{
             BleManager.read(this.peripheralId, this.readServiceUUID[index], this.readCharacteristicUUID[index])
                 .then((data) => {
