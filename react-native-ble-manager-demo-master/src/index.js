@@ -12,7 +12,10 @@ import {
     SafeAreaView,
     Modal,
     StatusBar,
-    SectionList
+    SectionList, 
+    ToastAndroid,
+    ActivityIndicator,
+    DeviceEventEmitter
 } from 'react-native'
 import BleModule from './BleModule';
 import treaty from'./utils/treaty.js';
@@ -21,6 +24,8 @@ import bleParams from './utils/bleParams.js'
 import BleManager from "react-native-ble-manager";
 import UISelectModal from './selectView'
 import Selectmore from './componentModal/selectMore'
+import {checkPermission, permission, requestMultiplePermission} from "./utils/permissionUtil";
+import { RRCLoading } from 'react-native-overlayer';
 
 // import PopupDialog, { SlideAnimation } from 'react-native-popup-dialog';
 //确保全局只有一个BleManager实例，BleModule类保存着蓝牙的连接信息
@@ -30,58 +35,146 @@ global.BluetoothManager = new BleModule();
 //     slideFrom: 'bottom',
 // });
 
-
 export default class App extends Component {
+    constructor(props) {
+        super(props);
+        this.state={
+            stmp: 1,
+            getDating:false,
+            seq: 0,
+            password:null,
+            data: [],
+            scaning:false,
+            isConnected:false,
+            text:'',
+            writeData:'',
+            receiveData:'',
+            readData:'',
+            isMonitoring:false,
+            animating: false,
+            displayShuoming:false,
+        }
+        this.bluetoothReceiveData = [];  //蓝牙接收的数据缓存
+        this.deviceMap = new Map();
 
-    // onPressButton() {
-    //     Alert.alert('You tapped the button!');
-    //     this.getVersion();
-    // }
-    //     // 返回事件
-    onPressButton = () => {
-        this.getVersion();
+    }
+    componentWillMount() {
+        console.log('componentWillMount');
+        //监听消息和Android端保持一致
+        this.subscription = DeviceEventEmitter.addListener('Android2RN',this.handleMessage);
+    }
+    componentWillUnmount() {
+        this.subscription.remove()
+    }
+    handleMessage(message){
+        console.log(message);
+    }
+    //断开wifi
+    disconnectSta = () => {
+        let that = this;
+        let type = bleParams.SUBTYPE_DISCONNECT_WIFI;
+        let data = codec.utf8.encode("1234");
+        let buffer =  treaty.pottingData(type,1,data,data.length,false,false,true,0,true);
+        let array = new Uint8Array(buffer);
+        // let str = this.utf8ByteArrayToString(array);//转换字符串
+        BluetoothManager.write(this.Bytes2Str(array),0)
+            .then(()=>{
+                this.bluetoothReceiveData = [];
+                this.setState({
+                    writeData:buffer.buffer,
+                    text:'',
+                })
+                setTimeout(function(){
+                    BluetoothManager.readIS(4)
+                        .then(data=>{
+                            console.log("读取成功:")
+                            console.log(data)
+                            ToastAndroid.show("发送断开指令成功", ToastAndroid.SHORT);
+                            setTimeout(function () {
+                                that.getWifiStatus()
+                            },500)
+                        })
+                        .catch(err=>{
+                            that.alert('读取失败');
+                        })
+                },10)
+            })
+            .catch(err=>{
+                this.alert('发送失败');
+            })
+    }
+    getWifiStatus= () =>{
+        let that = this;
+        let type = bleParams.SUBTYPE_GET_WIFI_STATUS;
+        let data = [];
+        console.log("getWifiStatus: start")
+        data = codec.utf8.encode("1234");
+        let buffer =  treaty.pottingData(type,1,data,data.length,false,false,true,0,true);
+        let array = new Uint8Array(buffer);
+        BluetoothManager.write(this.Bytes2Str(array),0)
+            .then(()=>{
+                console.log("读取成功1:")
+                this.seq++
+                console.log("读取成功2:")
+                setTimeout(function(){
+                    console.log("读取成功3:")
+                    BluetoothManager.read(4)
+                        .then(data=>{
+                            console.log("读取成功回调")
+                            console.log(data)
+                            let wifiStatusModel = JSON.parse(data);
+
+                            if (wifiStatusModel.state===bleParams.WIFI_STATE_ENUM_LIST.WIFI_STATE_IDLE) {
+                                that.alert("wifi当前状态断开");
+                            } else if(wifiStatusModel.state===bleParams.WIFI_STATE_ENUM_LIST.WIFI_STATE_CONNECTING) {
+                                that.alert("wifi正在努力连接中");
+                                setTimeout(() => {
+                                    that.getWifiStatus()
+                                }, 2000);
+                            }else if(wifiStatusModel.state===bleParams.WIFI_STATE_ENUM_LIST.WIFI_STATE_CONNECTED_IP_GETTING) {
+                                that.alert("已连接，正在获取ip地址中");
+                                setTimeout(() => {
+                                    that.getWifiStatus()
+                                }, 2000);
+                            }else if(wifiStatusModel.state===bleParams.WIFI_STATE_ENUM_LIST.WIFI_STATE_CONNECTED_IP_GOT){
+                                // that.alert("wifi连接成功");
+                                Alert.alert('wifi连接成功','ip:'+wifiStatusModel.ip+'\n'+'gw:'+wifiStatusModel.gw+'\n'+ 'mask:'+wifiStatusModel.mask,[{ text:'确定',onPress:()=>{ } }]);
+                            }else if (wifiStatusModel.state===bleParams.WIFI_STATE_ENUM_LIST.WIFI_STATE_PSK_ERROR){
+                                that.alert("wifi连接密码错误");
+                            }else if (wifiStatusModel.state===bleParams.WIFI_STATE_ENUM_LIST.WIFI_STATE_NO_AP_FOUND){
+                                that.alert("未找到该ap");
+                            }else {
+                                that.alert("其他原因");
+                            }
+
+                        })
+                        .catch(err=>{
+                            ToastAndroid.show("读取失败,正在重试中", ToastAndroid.SHORT);
+                            setTimeout(() => {
+                                that.getWifiStatus()
+                            }, 300);
+                        })
+                },20)
+
+            })
+            .catch(err=>{
+                this.alert('发送失败');
+            })
     }
     sendPassword= () =>{
         console.log(this.state.password)
         console.log(this.wifiName)
+        this.setState({
+            displayShuoming: false
+        });
+        this.showLoading()
         this.send2passwordImpl(null);
     }
     send2passwordImpl(bytes){
-        if (bytes==null) {
-
-        }else{
-            console.log("callback will proccoss Uint8Array bytes:" + bytes)
-            let frag_ctrl = bytes[3]<<8|bytes[2];
-            frag_ctrl &= 0x7fff;
-            let ackCode;
-            if (frag_ctrl === 0) {
-                ackCode = bytes[17];
-                let dataLength = bytes[6];
-                if (dataLength<11) {
-                    console.error("数据解析失败，长度不够");
-                    return
-                }
-            } else {
-                ackCode = bytes[7];
-                let dataLength = bytes[6];
-                if (dataLength<1) {
-                    console.error("数据解析失败，长度不够");
-                    return
-                }
-            }
-            if (ackCode===0) {
-
-            } else {
-                console.error("ackCode!=0");
-            }
-            let date2String;
-            if (frag_ctrl===0) {
-                //date2String = bytes.slice(18,bytes[16]+18)
-            } else {
-                //date2String = bytes.slice(8,bytes[6]+8)
-            }
-        }
+        let that = this
         let type
+        console.log(this.state.stmp)
+
         switch(this.state.stmp){
             case 1:
                 type = bleParams.SUBTYPE_STA_WIFI_SSID;
@@ -91,11 +184,11 @@ export default class App extends Component {
             case 2:
                 type = bleParams.SUBTYPE_STA_WIFI_PASSWORD;
                 this.state.stmp++;
-                this.sen8kDate(this.password,type,this.send2passwordImpl);
+                this.sen8kDate(this.state.password,type,this.send2passwordImpl);
                 break;
             case 3:
                 type = bleParams.SUBTYPE_CONNECT_WIFI;
-                this.state.stmp = 0;
+                this.state.stmp = 1;
                 let data = [];
                 data = codec.utf8.encode("9988");
                 let buffer =  treaty.pottingData(type,this.state.seq,data,data.length,false,false,true,0,true);
@@ -107,16 +200,18 @@ export default class App extends Component {
                         this.seq++
                         console.log("读取成功2:")
                         setTimeout(function(){
+                            RRCLoading.hide();
                             console.log("读取成功3:")
-                            BluetoothManager.read(4)
+                            BluetoothManager.readIS(4)
                                 .then(data=>{
                                     console.log(data)
+                                    that.getWifiStatus()
                                     // that.send2passwordImpl(data)
                                 })
                                 .catch(err=>{
                                     // that.alert('读取失败');
                                 })
-                        },2)
+                        },1000)
 
                     })
                     .catch(err=>{
@@ -124,15 +219,6 @@ export default class App extends Component {
                     })
                 break;
         }
-    }
-    sliceArr(array, size) {
-        let result = [];
-        for (let x = 0; x < Math.ceil(array.length / size); x++) {
-            let start = x * size;
-            let end = start + size;
-            result.push(array.slice(start, end));
-        }
-        return result;
     }
     sen8kDate(e,type,callback) {
         let that = this;
@@ -199,10 +285,10 @@ export default class App extends Component {
                     console.log("读取成功2:")
                     setTimeout(function(){
                         console.log("读取成功3:")
-                        BluetoothManager.read(4)
+                        BluetoothManager.readIS(4)
                             .then(data=>{
                                 console.log(data)
-                                that.send2passwordImpl(data)
+                                that.send2passwordImpl(null)
                             })
                             .catch(err=>{
                                 that.alert('读取失败');
@@ -215,10 +301,9 @@ export default class App extends Component {
                 })
         }
     }
-
-
     smartConfig = () => {
         let that = this;
+        that.SelectData = [];
         let type = bleParams.SUBTYPE_GET_WIFI_LIST;
         let data = [];
         data = codec.utf8.encode("1234");
@@ -231,15 +316,18 @@ export default class App extends Component {
                 console.log("读取成功2:")
                 setTimeout(function(){
                     console.log("读取成功3:")
-                    BluetoothManager.read(4)
+                    BluetoothManager.readIS(4)
                         .then(data=>{
                             console.log(data)
-                            that.getDate()
+                            that.showLoading()
+                            setTimeout(function () {
+                                that.getWIFILISTDate()
+                            },3000)
                         })
                         .catch(err=>{
                             that.alert('读取失败');
                         })
-                 },2000)
+                 },10)
 
             })
             .catch(err=>{
@@ -247,10 +335,10 @@ export default class App extends Component {
             })
     }
     getDateResults: '';
-    getDate(){
+    getWIFILISTDate(){
         let that = this;
-        console.log("读取成功4:")
-        let type = 11;
+        console.log("getWIFILISTDate start:")
+        let type = bleParams.SUBTYPE_GET_WIFI_EVERY_LIST;
         let data = [];
         data = codec.utf8.encode("1234");
         let buffer =  treaty.pottingData(type,this.seq,data,data.length,false,false,true,0,true);
@@ -265,158 +353,51 @@ export default class App extends Component {
                         .then(data=>{
                             console.log("读取成功:")
                             console.log(data)
-                            that.getWifiDate(data)
+                            let wifiModel = JSON.parse(data);
+                            console.log('json解析ok')
+                            console.log(wifiModel)
+                            console.log(wifiModel.bssid)
+                            //+wifiModel.bssid
+                            that.SelectData.push({name:wifiModel.ssid,id:wifiModel.bssid+"   强度:"+wifiModel.rssi});
+                            console.log(that.SelectData)
+                            that.setState({
+                                displayShuoming: true
+                            });
+                            that.getWIFILISTDate();
                         })
                         .catch(err=>{
-                            console.log('读取失败');
+                            console.log(err);
+                            if (err==="date2Stringis0"){
+                                RRCLoading.hide();
+                                ToastAndroid.show("数据接受完成", ToastAndroid.LONG);
+                            }else if (err==="acd!=0"){
+                                ToastAndroid.show("缓冲中，正在传输数据", ToastAndroid.SHORT);
+                                setTimeout(function () {
+                                    that.getWIFILISTDate();
+                                },200)
+                            }else {
+                                ToastAndroid.show("读取失败", ToastAndroid.LONG);
+                            }
+
                         })
-                },1000)
+                },10)
 
             })
             .catch(err=>{
                 console.log('发送失败');
+                setTimeout(function () {
+                    that.getWIFILISTDate();
+                },100)
             })
     }
-    getWifiDate(bytes){
-        let that = this;
 
-        if (bytes==null) {
-
-        } else {
-            let frag_ctrl = bytes[3]<<8|bytes[2];
-            frag_ctrl &= 0x7fff;
-            let ackCode;
-            if (frag_ctrl === 0) {
-                ackCode = bytes[17];
-                let dataLength = bytes[6];
-                if (dataLength<11) {
-                    console.log("数据解析失败，长度不够");
-                    return
-                }
-            } else {
-                ackCode = bytes[7];
-                let dataLength = bytes[6];
-                if (dataLength<1) {
-                    console.log("数据解析失败，长度不够");
-                    return
-                }
-            }
-            if (ackCode===0) {
-                let date2String;
-                if (frag_ctrl===0) {
-                    date2String = bytes.slice(18,bytes[16]+18)
-                } else {
-                    date2String = bytes.slice(8,bytes[6]+8)
-                }
-                if (date2String.length===0) {
-                    console.log("date2String.length==0");
-                    that.alert('获取wifi列表完成');
-                    return
-                } else {
-                    let dateString = this.Uint8ArrayToString(date2String);
-                    console.log(dateString);
-                    if (that.getDateResults===undefined){
-                        console.log(that.getDateResults)
-                        that.getDateResults="";
-                        console.log(that.getDateResults)
-                    }
-                    console.log(that.getDateResults)
-                    that.getDateResults += dateString;
-
-                    let frag_ctrl_high = ( bytes[3]<<8) | bytes[2];
-                    let code = this.bitGet(frag_ctrl_high,15);
-                    if (code === 1) {
-                        console.log('json解析前')
-                        console.log(typeof that.getDateResults);
-                        console.log(that.getDateResults);
-                        //解析和显示
-                        //this.showRule(this.data.getDateResults);
-                        //let jsonString = this.getDateResults;
-                        //'{"key1": "string1","key2": "string2"}';
-                        let wifiModel = JSON.parse(that.getDateResults);
-                        console.log('json解析ok')
-                        console.log(wifiModel)
-                        console.log(wifiModel.bssid)
-                        //+wifiModel.bssid
-                        this.SelectData.push({name:wifiModel.ssid,id:wifiModel.bssid});
-                        console.log(this.SelectData)
-                        this.setState({
-                            visible: true
-                        });
-
-                        that.getDateResults=""
-                    } else {
-
-                    }
-                }
-                that.getDating = true;
-                let type = 11;
-                let data = [];
-                data = codec.utf8.encode("1234");
-                let buffer =  treaty.pottingData(type,this.seq,data,data.length,false,false,true,0,true);
-                console.log(buffer);
-                let array = new Uint8Array(buffer);
-                BluetoothManager.write(this.Bytes2Str(array),0)
-                    .then(()=>{
-                        this.seq++
-                        setTimeout(function(){
-                            BluetoothManager.read(4)
-                                .then(data=>{
-                                    console.log("读取成功:")
-                                    console.log(data)
-                                    that.getWifiDate(data)
-                                })
-                                .catch(err=>{
-                                    console.log('读取失败');
-                                })
-                        },1)
-
-                    })
-                    .catch(err=>{
-                        console.log('发送失败');
-                    })
-
-            } else {
-                console.log("ackCode!=0");
-                //setTimeout(() => {
-                this.getDating = true;
-                let type = 11;
-                let data = [];
-                data = codec.utf8.encode("1234");
-                let buffer =  treaty.pottingData(type,this.seq,data,data.length,false,false,true,0,true);
-                console.log(buffer);
-                let array = new Uint8Array(buffer);
-                BluetoothManager.write(this.Bytes2Str(array),0)
-                    .then(()=>{
-                        this.seq++
-                        setTimeout(function(){
-                            BluetoothManager.read(4)
-                                .then(data=>{
-                                    console.log("读取成功:")
-                                    console.log(data)
-                                    that.getWifiDate(data)
-                                })
-                                .catch(err=>{
-                                    that.alert('读取失败');
-                                })
-                        },1)
-
-                    })
-                    .catch(err=>{
-                        that.alert('发送失败');
-                    })
-            }
-        }
-    }
-    getVersion(){
+    getVersion = () =>{
         let type = bleParams.SUBTYPE_GET_VERSION;
         let data = codec.utf8.encode("1234");
         let buffer =  treaty.pottingData(type,1,data,data.length,false,false,true,0,true);
         let array = new Uint8Array(buffer);
-        let str = this.utf8ByteArrayToString(array);//转换字符串
         BluetoothManager.write(this.Bytes2Str(array),0)
             .then(()=>{
-                //console.log("6");
                 this.bluetoothReceiveData = [];
                 this.setState({
                     writeData:buffer.buffer,
@@ -427,12 +408,12 @@ export default class App extends Component {
                         .then(data=>{
                             console.log("读取成功:")
                             console.log(data)
-                            //this.getWifiDate()
+                            ToastAndroid.show("版本号为："+data, ToastAndroid.SHORT);
                         })
                         .catch(err=>{
                             this.alert('读取失败');
                         })
-                },100)
+                },10)
             })
             .catch(err=>{
                 this.alert('发送失败');
@@ -498,7 +479,15 @@ export default class App extends Component {
         }
         return out.join('');
     }
-
+    sliceArr(array, size) {
+        let result = [];
+        for (let x = 0; x < Math.ceil(array.length / size); x++) {
+            let start = x * size;
+            let end = start + size;
+            result.push(array.slice(start, end));
+        }
+        return result;
+    }
     Uint8ArrayToString(fileData){
         var dataString = "";
         for (var i = 0; i < fileData.length; i++) {
@@ -506,11 +495,9 @@ export default class App extends Component {
         }
         return dataString
     }
-
     bitGet( dater, num){
         return ((dater & (1<<(num))) >> num) == 1 ? 1 : 0
     }
-
     Bytes2Str(arr) {
         let str = "";
         for(let i=0; i<arr.length; i++)
@@ -524,38 +511,45 @@ export default class App extends Component {
         }
         return str;
     }
-
-    constructor(props) {
-        super(props);
-        this.state={
-            stmp: 1,
-            getDating:false,
-            seq: 0,
-            password:null,
-            data: [],
-            scaning:false,
-            isConnected:false,
-            text:'',
-            writeData:'',
-            receiveData:'',
-            readData:'',
-            isMonitoring:false,
+    showLoading(){
+        RRCLoading.setLoadingOptions({
+            text: '正在传输，请等待',
+            loadingBackgroundColor: 'rgba(0,0,0,0.0)',
+            loadingViewStyle: {backgroundColor: 'rgba(0,0,0,0.8)'},
+            loadingTextStyle: {}
+        })
+      
+        RRCLoading.show();
+    }
+    showOrHide() {
+        console.log(this.state.animating)
+        if (this.state.animating) {
+          this.setState({
+            animating: false
+          });
+        } else {
+          this.setState({
+            animating: true
+          });
         }
-        this.bluetoothReceiveData = [];  //蓝牙接收的数据缓存
-        this.deviceMap = new Map();
-
-
     }
 
+    
+
     opens(v){//接收子组件传递过来的数据
+        let that = this;
         console.log('在这里处理子组件返回的值');
         console.log(v);
-        console.log(v.name);
-        this.wifiName = "bl_test_055";
+        console.log(v.key);
+        console.log(v.value);
+        for (const key in v) {
+            console.log(v[key]);
+            that.wifiName = v[key].toString();
+            console.log(that.wifiName);
+        }
     }
 
     componentDidMount(){
-
         BluetoothManager.start();  //蓝牙初始化
         this.updateStateListener = BluetoothManager.addListener('BleManagerDidUpdateState',this.handleUpdateState);
         this.stopScanListener = BluetoothManager.addListener('BleManagerStopScan',this.handleStopScan);
@@ -563,7 +557,34 @@ export default class App extends Component {
 	    this.connectPeripheralListener = BluetoothManager.addListener('BleManagerConnectPeripheral',this.handleConnectPeripheral);
         this.disconnectPeripheralListener = BluetoothManager.addListener('BleManagerDisconnectPeripheral',this.handleDisconnectPeripheral);
         this.updateValueListener = BluetoothManager.addListener('BleManagerDidUpdateValueForCharacteristic', this.handleUpdateValue);
+        this._checkPermission();
     }
+    // 使用步骤
+    _checkPermission = async () => {
+        console.log("_checkPermission")
+        const permissions = [permission.ACCESS_FINE_LOCATION,permission.ACCESS_COARSE_LOCATION];
+        // 检查权限  等待异步函数的返回值
+        console.log("_checkPermission2")
+        const granted = await checkPermission(permission.ACCESS_FINE_LOCATION);
+        console.log("_checkPermission3")
+        if (granted) {
+            // 有权限 --> 实现业务逻辑
+            ToastAndroid.show("开始扫描附近设备", ToastAndroid.SHORT);
+            // this.scan();
+        } else {
+            // 没有权限 --> 获取权限  a --> true 授权了
+            let granted = await requestMultiplePermission(permissions);
+            if (granted['android.permission.ACCESS_FINE_LOCATION'] === 'granted') {
+                console.log('通过权限 可以使用该功能');
+                ToastAndroid.show("请点击扫描", ToastAndroid.SHORT);
+                this.scan();
+            } else {
+                console.log('拒绝了权限 无法使用该功能');
+                ToastAndroid.show("拒绝了权限 无法使用该功能", ToastAndroid.LONG);
+            }
+        }
+    };
+
 
     componentWillUnmount(){
         this.updateStateListener.remove();
@@ -666,7 +687,7 @@ export default class App extends Component {
                     data:[item.item],
                     isConnected:true
                 });
-                BleManager.requestMTU(item.item.id, 80)
+                BleManager.requestMTU(item.item.id, 220)
                     .then((mtu) => {
                         // Success code
                         console.log('MTU size changed to ' + mtu + ' bytes');
@@ -917,70 +938,83 @@ export default class App extends Component {
                             color="#841584"
                         />
                         <Button
-                            onPress={this.onPressButton}
+                            onPress={this.getWifiStatus}
                             title="查看wifi状态"
 
                         />
                         <Button
-                            onPress={this.onPressButton}
+                            onPress={this.getVersion}
                             title="查看VERSION"
 
                         />
                         <Button
-                            onPress={this.onPressButton}
+                            onPress={this.disconnectSta}
                             title="断开wifi"
                             color="#841584"
                         />
+
                     </View>
                     {/*<View style={styles.buttonContainer}>*/}
                     {/*</View>*/}
-                    <FlatList
-                        renderItem={this.renderItem}
-                        ListHeaderComponent={this.renderHeader}
-                        ListFooterComponent={this.renderFooter}
-                        keyExtractor={item=>item.id}
-                        data={this.state.data}
-                        extraData={[this.state.isConnected,this.state.text,this.state.receiveData,this.state.readData,this.state.writeData,this.state.isMonitoring,this.state.scaning]}
-                        keyboardShouldPersistTaps='handled'
-                    />
 
+                    {/* <ActivityIndicator
+                            animating={this.state.animating}
+                            style={[styles.centering, {height: 120}]}
+                            size="large" /> */}
 
+                        <FlatList
+                            renderItem={this.renderItem}
+                            ListHeaderComponent={this.renderHeader}
+                            ListFooterComponent={this.renderFooter}
+                            keyExtractor={item=>item.id}
+                            data={this.state.data}
+                            extraData={[this.state.isConnected,this.state.text,this.state.receiveData,this.state.readData,this.state.writeData,this.state.isMonitoring,this.state.scaning]}
+                            keyboardShouldPersistTaps='handled'
+                        />
 
-                    <Selectmore
-                        opens={this.opens.bind(this)}
-                        SelectData={this.SelectData}
-                        style={{flexWrap:'wrap',padding:6}}
-                        TextColor={{color:'#666',fontSize:13}}/>
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder='请输入密码'
-                        placeholderTextColor={"#CCC"}
-                        returnKeyType='done'
-                        clearButtonMode='while-editing'
-                        enablesReturnKeyAutomatically={true}
-                        editable={true}
-                        maxLength={100}
-                        keyboardType='default'
-                        onFocus={()=> console.log("--获取焦点触发事件--")}
-                        onBlur={()=> console.log("--失去焦点触发事件--")}
-                        onChange={() =>
-                            console.log("---当文本发生改变时，调用该函数--")
-                             }
-                        onEndEditing={() => console.log("--当结束编辑时，调用该函数--")}
-                        onSubmitEditing={ () => console.log("--当结束编辑后，点击键盘的提交按钮时触发事件--")}
-
-                        onChangeText={(text) => {
-                                this.state.password = text
-                               }}
-                    />
-
-                    <Button
-                        onPress={this.sendPassword}
-                        title="发送密码"
-                        color="#841584"
-                    />
                 </View>
+
+                {this.state.displayShuoming ? (
+ 
+                        <View >
+
+                        <Selectmore
+                            opens={this.opens.bind(this)}
+                            SelectData={this.SelectData}
+                            style={{flexWrap:'wrap',padding:6}}
+                            TextColor={{color:'#666',fontSize:13}}/>
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder='请输入密码'
+                            placeholderTextColor={"#CCC"}
+                            returnKeyType='done'
+                            clearButtonMode='while-editing'
+                            enablesReturnKeyAutomatically={true}
+                            editable={true}
+                            maxLength={100}
+                            keyboardType='default'
+                            onFocus={()=> console.log("--获取焦点触发事件--")}
+                            onBlur={()=> console.log("--失去焦点触发事件--")}
+                            onChange={() =>
+                                console.log("---当文本发生改变时，调用该函数--")
+                                }
+                            onEndEditing={() => console.log("--当结束编辑时，调用该函数--")}
+                            onSubmitEditing={ () => console.log("--当结束编辑后，点击键盘的提交按钮时触发事件--")}
+                            onChangeText={(text) => {
+                                    this.state.password = text
+                                }}
+                        />
+
+                        <Button
+                            onPress={this.sendPassword}
+                            title="发送密码"
+                            color="#841584"
+                        />
+                        </View>
+            
+                ) : null}
+              
             </SafeAreaView>
 
         )
@@ -1030,6 +1064,11 @@ const styles = StyleSheet.create({
     buttonContainer: {
         margin: 20
     },
+    centering: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 8,
+      },
 })
 
 

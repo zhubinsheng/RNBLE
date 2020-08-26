@@ -8,11 +8,12 @@ const SUBTYPE_SET_SEC_MODE = 0x01;
 const SUBTYPE_SET_OP_MODE = 0x02;
 const SUBTYPE_CONNECT_WIFI = 0x03;
 const SUBTYPE_DISCONNECT_WIFI = 0x04;
-const SUBTYPE_GET_WIFI_STATUS = 0x05;
+const SUBTYPE_GET_WIFI_STATUS = 13;
 const SUBTYPE_DEAUTHENTICATE = 0x06;
 const SUBTYPE_GET_VERSION = 0x07;
 const SUBTYPE_CLOSE_CONNECTION = 0x08;
 const SUBTYPE_GET_WIFI_LIST = 0x09;
+const SUBTYPE_GET_WIFI_EVERY_LIST = 0xB;
 
 const SUBTYPE_ACK_SUCCESS = 0x00;
 const SUBTYPE_NOT_READY = 0x01;
@@ -43,6 +44,24 @@ const SUBTYPE_CUSTOM_DATA = 0x13;
 const everyDateLength = 9;
 const firstDateLength = 19;
 
+var WIFI_STATE_ENUM_LIST = {
+  WIFI_STATE_UNKNOWN                              : 0x00,
+  WIFI_STATE_IDLE                                 : 0x01,
+  WIFI_STATE_CONNECTING                           : 0x02,
+  WIFI_STATE_CONNECTED_IP_GETTING                 : 0x03,
+  WIFI_STATE_CONNECTED_IP_GOT                     : 0x04,
+  WIFI_STATE_DISCONNECT                           : 0x05,
+  WIFI_STATE_WITH_AP_IDLE                         : 0x11,
+  WIFI_STATE_WITH_AP_CONNECTING                   : 0x12,
+  WIFI_STATE_WITH_AP_CONNECTED_IP_GETTING         : 0x13,
+  WIFI_STATE_WITH_AP_CONNECTED_IP_GOT             : 0x14,
+  WIFI_STATE_WITH_AP_DISCONNECT                   : 0x15,
+  WIFI_STATE_IFDOWN                               : 0x06,
+  WIFI_STATE_SNIFFER                              : 0x07,
+  WIFI_STATE_PSK_ERROR                            : 0x08,
+  WIFI_STATE_NO_AP_FOUND                          : 0x09,
+};
+
 module.exports = {
   firstDateLength: firstDateLength,
   everyDateLength: everyDateLength,
@@ -56,4 +75,7 @@ module.exports = {
   SUBTYPE_CONNECT_WIFI: SUBTYPE_CONNECT_WIFI,
   SUBTYPE_DISCONNECT_WIFI: SUBTYPE_DISCONNECT_WIFI,
   SUBTYPE_GET_VERSION: SUBTYPE_GET_VERSION,
+  SUBTYPE_GET_WIFI_STATUS: SUBTYPE_GET_WIFI_STATUS,
+  WIFI_STATE_ENUM_LIST:WIFI_STATE_ENUM_LIST,
+  SUBTYPE_GET_WIFI_EVERY_LIST:SUBTYPE_GET_WIFI_EVERY_LIST,
 }

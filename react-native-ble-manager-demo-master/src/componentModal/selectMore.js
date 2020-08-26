@@ -120,7 +120,7 @@ export default class Selectmore extends React.Component {
                                                       borderStyle: 'solid',
                                                       paddingTop: 8,
                                                       paddingBottom: 8
-                                                  }}>{item.name}</Text>
+                                                  }}>{item.name+"   mac:"+item.id}</Text>
                                               </Checkbox>
                                           </View>)
                                       }}

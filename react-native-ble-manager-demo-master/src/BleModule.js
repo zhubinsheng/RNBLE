@@ -16,6 +16,7 @@ export default class BleModule{
     constructor(){
 	    this.isConnecting = false;  //蓝牙是否连接
         this.bluetoothState = 'off';   //蓝牙打开状态
+        this.getDateResults = ""; //缓存的分批获得的数据
         this.initUUID();
     }
 
@@ -128,7 +129,6 @@ export default class BleModule{
         this.nofityServiceUUID = [];
         this.nofityCharacteristicUUID = [];
     }
-
     //获取Notify、Read、Write、WriteWithoutResponse的serviceUUID和characteristicUUID
     getUUID(peripheralInfo){
         this.readServiceUUID = [];
@@ -309,22 +309,149 @@ export default class BleModule{
      * Read the current value of the specified characteristic, you need to call retrieveServices method before
      * */
     read(index = 0){
-        console.log('readServiceUUID',"this.readServiceUUID[index]:");
-
-        console.log('readServiceUUID',this.readServiceUUID[index]);
-        index = index - 4;
         return new Promise( (resolve, reject) =>{
-            BleManager.read(this.peripheralId, this.readServiceUUID[index], this.readCharacteristicUUID[index])
+            this.raedImpl(resolve,reject,index-4)
+        });
+    }
+
+    raedImpl(mresolve,mreject,index) {
+        BleManager.read(this.peripheralId, this.readServiceUUID[index], this.readCharacteristicUUID[index])
+            .then((data) => {
+                const str = this.byteToString(data);
+                console.log('Read: ', data, str);
+                // resolve(data);
+                this.readDate(data,mresolve, mreject)
+            })
+            .catch((error) => {
+                console.log(error);
+                setTimeout(() => {
+                    //暂时做无限递归
+                    this.raedImpl(mresolve,mreject,index)
+                }, 300);
+                // reject(error);
+            });
+    }
+
+    readDate(bytes,indexresolve,indexreject){
+        if (bytes==null) {
+            console.log("bytes==null");
+        } else {
+            let dateString = this.byteToString(bytes);
+            let frag_ctrl = bytes[3]<<8|bytes[2];
+            frag_ctrl &= 0x7fff;
+            let ackCode;
+            console.log("准备解析数据1")
+            if (frag_ctrl === 0) {
+                ackCode = bytes[17];
+                let dataLength = bytes[6];
+                if (dataLength<11) {
+                    console.error("数据解析失败，长度不够");
+                    return
+                }
+            } else {
+                ackCode = bytes[7];
+                let dataLength = bytes[6];
+                if (dataLength<1) {
+                    console.error("数据解析失败，长度不够");
+                    return
+                }
+            }
+            console.log("准备解析数据23")
+            if (ackCode===0) {
+                let date2String;
+                console.log((frag_ctrl===0).toString())
+                if (frag_ctrl===0) {
+                    date2String = bytes.slice(18,bytes[16]+18)
+                    console.log("出错2")
+                } else {
+                    date2String = bytes.slice(8,bytes[6]+8)
+                    console.log("出错1")
+                }
+                console.log("准备解析数据456")
+                if (date2String.length===0) {
+                    console.log("date2String.length==0");
+                    indexreject("date2Stringis0")
+                } else {
+                    console.log("准备解析数据7890")
+                    let unit8Arr = new Uint8Array(date2String);
+                    let encodedString = String.fromCharCode.apply(null, unit8Arr);
+                    let decodedString;
+                    try {
+                        decodedString = decodeURIComponent(escape((encodedString)));
+                    } catch (error) {
+                        console.error("解码出错")
+                        decodedString = dateString;
+                    }
+                    this.getDateResults += decodedString;
+                    let frag_ctrl_high = ( bytes[3]<<8) | bytes[2];
+                    let code = this.bitGet(frag_ctrl_high,15);
+                    if (code === 1) {
+                        //解析和显示
+                        indexresolve(this.getDateResults)
+                    }
+                    this.getDateResults = ""
+                }
+            }else{
+                console.log("数据还没准备好")
+                indexreject("acd!=0")
+                // writeCallback(resolve, reject)
+            }
+        }
+    }
+
+    bitGet( dater, num){
+        return ((dater & (1<<(num))) >> num) === 1 ? 1 : 0
+    }
+
+    /**
+     * 读取指令状态
+     * Read the current value of the specified characteristic, you need to call retrieveServices method before
+     * */
+    readIS(index = 0){
+        return new Promise( (resolve, reject) =>{
+            BleManager.read(this.peripheralId, this.readServiceUUID[index-4], this.readCharacteristicUUID[index-4])
                 .then((data) => {
                     const str = this.byteToString(data);
                     console.log('Read: ', data, str);
-                    resolve(data);
+                    // resolve(data);
+                    this.readIfSucc(data,resolve, reject)
                 })
                 .catch((error) => {
                     console.log(error);
                     reject(error);
                 });
         });
+    }
+
+
+    readIfSucc(bytes,indexresolve,indexreject){
+        if (bytes==null) {
+
+        } else {
+            let frag_ctrl = bytes[3]<<8|bytes[2];
+            frag_ctrl &= 0x7fff;
+            let ackCode;
+            if (frag_ctrl === 0) {
+                ackCode = bytes[17];
+                let dataLength = bytes[6];
+                if (dataLength<11) {
+                    console.error("数据解析失败，长度不够");
+                    return
+                }
+            } else {
+                ackCode = bytes[7];
+                let dataLength = bytes[6];
+                if (dataLength<1) {
+                    console.error("数据解析失败，长度不够");
+                    return
+                }
+            }
+            if (ackCode===0) {
+                indexresolve("发送指令成功")
+            }else{
+                indexreject("发送指令失败")
+            }
+        }
     }
 
     /**
