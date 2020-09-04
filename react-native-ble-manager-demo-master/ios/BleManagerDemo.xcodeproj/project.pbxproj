@@ -19,6 +19,8 @@
 		2DCD954D1E0B4F2C00145EB5 /* BleManagerDemoTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* BleManagerDemoTests.m */; };
 		3D7F7BCAFF9594D9B2DFBD27 /* libPods-BleManagerDemoTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7829B4416295BB0E535C9C16 /* libPods-BleManagerDemoTests.a */; };
 		85E95847D3C4C7EE5AC744A8 /* libPods-BleManagerDemo-tvOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A4B0EA4AD18C639CCD116613 /* libPods-BleManagerDemo-tvOS.a */; };
+		B2BEB79024F6B64B004E3D87 /* main.jsbundle in Resources */ = {isa = PBXBuildFile; fileRef = B2BEB78E24F6B64A004E3D87 /* main.jsbundle */; };
+		B2BEB79124F6B64B004E3D87 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = B2BEB78F24F6B64A004E3D87 /* assets */; };
 		E99BC6F878EA0FEE9FF716A4 /* libPods-BleManagerDemo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 41EC34E387E65AF6F2EEFD22 /* libPods-BleManagerDemo.a */; };
 /* End PBXBuildFile section */
 
@@ -40,7 +42,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		008F07F21AC5B25A0029DE68 /* main.jsbundle */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
 		00E356EE1AD99517003FC87E /* BleManagerDemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BleManagerDemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* BleManagerDemoTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BleManagerDemoTests.m; sourceTree = "<group>"; };
@@ -60,6 +61,8 @@
 		7829B4416295BB0E535C9C16 /* libPods-BleManagerDemoTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BleManagerDemoTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8093AB16F0B9165A7B335A3A /* Pods-BleManagerDemo-tvOSTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BleManagerDemo-tvOSTests.debug.xcconfig"; path = "Target Support Files/Pods-BleManagerDemo-tvOSTests/Pods-BleManagerDemo-tvOSTests.debug.xcconfig"; sourceTree = "<group>"; };
 		A4B0EA4AD18C639CCD116613 /* libPods-BleManagerDemo-tvOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BleManagerDemo-tvOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B2BEB78E24F6B64A004E3D87 /* main.jsbundle */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = main.jsbundle; path = ../release_ios/main.jsbundle; sourceTree = "<group>"; };
+		B2BEB78F24F6B64A004E3D87 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../release_ios/assets; sourceTree = "<group>"; };
 		B6A60D6D628E0C62759F152A /* Pods-BleManagerDemo-tvOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BleManagerDemo-tvOS.debug.xcconfig"; path = "Target Support Files/Pods-BleManagerDemo-tvOS/Pods-BleManagerDemo-tvOS.debug.xcconfig"; sourceTree = "<group>"; };
 		DB6B6F90BBF7324B190529CA /* libPods-BleManagerDemo-tvOSTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BleManagerDemo-tvOSTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDBDFC21E1C1D4E9D48E72DB /* Pods-BleManagerDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BleManagerDemo.release.xcconfig"; path = "Target Support Files/Pods-BleManagerDemo/Pods-BleManagerDemo.release.xcconfig"; sourceTree = "<group>"; };
@@ -125,7 +128,8 @@
 		13B07FAE1A68108700A75B9A /* BleManagerDemo */ = {
 			isa = PBXGroup;
 			children = (
-				008F07F21AC5B25A0029DE68 /* main.jsbundle */,
+				B2BEB78F24F6B64A004E3D87 /* assets */,
+				B2BEB78E24F6B64A004E3D87 /* main.jsbundle */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.m */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -229,7 +233,7 @@
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				B258DBCD24F6091C00B511CE /* ShellScript */,
+				B258DBCD24F6091C00B511CE /* Run Script */,
 			);
 			buildRules = (
 			);
@@ -290,10 +294,11 @@
 				TargetAttributes = {
 					00E356ED1AD99517003FC87E = {
 						CreatedOnToolsVersion = 6.2;
+						DevelopmentTeam = S4UH734CAN;
 						TestTargetID = 13B07F861A680F5B00A75B9A;
 					};
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = DZRM63L69K;
+						DevelopmentTeam = S4UH734CAN;
 						ProvisioningStyle = Automatic;
 					};
 					2D02E47A1E0B4A5D006451C7 = {
@@ -341,6 +346,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B2BEB79024F6B64B004E3D87 /* main.jsbundle in Resources */,
+				B2BEB79124F6B64B004E3D87 /* assets in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				13B07FBD1A68108700A75B9A /* LaunchScreen.xib in Resources */,
 			);
@@ -436,7 +443,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B258DBCD24F6091C00B511CE /* ShellScript */ = {
+		B258DBCD24F6091C00B511CE /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -445,13 +452,14 @@
 			);
 			inputPaths = (
 			);
+			name = "Run Script";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n# if [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n # export SKIP_BUNDLING=true\n# fi\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nif [ \"${CONFIGURATION}\" == \"Debug\" ]; then\nexport SKIP_BUNDLING=true\nfi\n";
 		};
 		D1E5553037202530606163DF /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -605,6 +613,7 @@
 			baseConfigurationReference = EBF6F2313EAD58FF331495AD /* Pods-BleManagerDemoTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = S4UH734CAN;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -629,6 +638,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = S4UH734CAN;
 				INFOPLIST_FILE = BleManagerDemoTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
@@ -652,7 +662,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = NO;
-				DEVELOPMENT_TEAM = DZRM63L69K;
+				DEVELOPMENT_TEAM = S4UH734CAN;
 				INFOPLIST_FILE = BleManagerDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				OTHER_LDFLAGS = (
@@ -660,7 +670,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blblenew.SmartBleManagernew;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blblenew.mySmartBleManagernew;
 				PRODUCT_NAME = BleManagerDemo;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -675,7 +685,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DZRM63L69K;
+				DEVELOPMENT_TEAM = S4UH734CAN;
 				INFOPLIST_FILE = BleManagerDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				OTHER_LDFLAGS = (
@@ -683,7 +693,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blblenew.SmartBleManagernew;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blblenew.mySmartBleManagernew;
 				PRODUCT_NAME = BleManagerDemo;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				VERSIONING_SYSTEM = "apple-generic";

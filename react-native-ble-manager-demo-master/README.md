@@ -9,3 +9,8 @@
 ![搜索](https://github.com/zhanguangao/react-native-ble-manager-demo/blob/master/screenshot/scan.png?raw=true)
 <br>
 ![已连接](https://github.com/zhanguangao/react-native-ble-manager-demo/blob/master/screenshot/connect.png?raw=true)
+
+
+
+react-native bundle --entry-file index.js --platform ios --dev false --bundle-output release_ios/main.jsbundle --assets-dest release_ios/
+打包命令
